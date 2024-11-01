@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { handle } from '@hono/node-server/vercel'
 import { prisma } from './client'
 
 const app = new Hono()
@@ -12,7 +13,7 @@ const route = app
     return c.json(tasks)
   })
 
-export default app
+export default handle(app)
 
 // クライアント側で型情報を参照するためexport
 export type AppType = typeof route
