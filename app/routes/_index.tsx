@@ -6,6 +6,7 @@ import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { PlayIcon, PauseIcon, CheckIcon, TrashIcon, PlusIcon } from 'lucide-react'
+import { formatTime } from '~/lib/utils'
 
 type Task = {
   id: number
@@ -75,12 +76,6 @@ const IndexPage: React.FC = () => {
 
     return () => clearInterval(timer)
   }, [])
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
 
   return (
     <div className="container mx-auto p-4 max-w-2xl">
