@@ -1,0 +1,34 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Timebox {
+  id             String   @id @default(uuid()) @db.Uuid
+  title          String   @db.VarChar(255)
+  comment        String?  @db.Text
+  start_time     DateTime
+  end_time       DateTime
+  remaining_time Int
+  status         Status   @default(idle)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@map("timeboxes") // テーブル名を指定
+}
+
+enum Status {
+  idle
+  paused
+  completed
+}
