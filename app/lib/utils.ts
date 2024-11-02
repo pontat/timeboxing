@@ -12,4 +12,4 @@ export const formatTime = (seconds: number): string => {
 }
 
 // envからAPI_URLを取得する
-export const API_URL = process.env.API_URL as string
+export const API_URL = import.meta.env.VITE_API_URL as string
