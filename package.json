@@ -21,8 +21,6 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "hono": "^4.6.8",
-    "hono-remix-adapter": "^0.3.0",
     "isbot": "^4.1.0",
     "lucide-react": "^0.454.0",
     "prisma": "^5.21.1",
