@@ -22,6 +22,7 @@ const PostSchema = z.object({
 const PutSchema = z.object({
   id: z.string().uuid(),
   remaining_seconds: z.coerce.number().min(0),
+  status: z.enum(['idle', 'running', 'paused', 'completed']).optional(),
 })
 
 const DeleteSchema = z.object({

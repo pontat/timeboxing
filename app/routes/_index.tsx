@@ -10,7 +10,7 @@ import { formatTime } from '~/lib/utils'
 import type { Timebox } from '@prisma/client'
 import axios from 'axios'
 import { useForm, type SubmitHandler } from 'react-hook-form'
-import { API_URL } from '~/lib/utils'
+import { API_URL, sound } from '~/lib/utils'
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const response: { data: TimeboxIndex[] } = await axios.get(`${API_URL}/api/timeboxes`)
@@ -45,7 +45,11 @@ const IndexPage: React.FC = () => {
           timebox.status === 'running' && timebox.remaining_seconds > 0
             ? { ...timebox, remaining_seconds: timebox.remaining_seconds - 1 }
             : timebox.status === 'running' && timebox.remaining_seconds <= 0
-              ? { ...timebox, status: 'completed' }
+              ? (() => {
+                  sound()
+                  updateTimebox(timebox.id, { remaining_seconds: timebox.remaining_seconds, status: 'completed' })
+                  return { ...timebox, status: 'completed' }
+                })()
               : timebox,
         ),
       )
@@ -60,7 +64,7 @@ const IndexPage: React.FC = () => {
     if (response.status !== 200) alert('追加に失敗しました')
   }
 
-  const updateTimebox = async (id: string, data: { remaining_seconds: number }) => {
+  const updateTimebox = async (id: string, data: { remaining_seconds: number; status?: 'idle' | 'running' | 'paused' | 'completed' }) => {
     const response = await axios.put(`${API_URL}/api/timeboxes`, { id, ...data })
     if (response.status !== 200) alert('更新に失敗しました')
   }
@@ -114,7 +118,7 @@ const IndexPage: React.FC = () => {
                             setTimeboxes((prevTimeboxes) =>
                               prevTimeboxes.map((prevTimebox) => (prevTimebox.id === timebox.id ? { ...prevTimebox, status: 'idle' } : prevTimebox)),
                             )
-                            updateTimebox(timebox.id, { remaining_seconds: timebox.remaining_seconds })
+                            updateTimebox(timebox.id, { remaining_seconds: timebox.remaining_seconds, status: 'paused' })
                           }}
                         >
                           <PauseIcon className="h-4 w-4" />
