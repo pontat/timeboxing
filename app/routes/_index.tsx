@@ -1,75 +1,51 @@
 import { json } from '@remix-run/node'
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/node'
-import { useLoaderData, useSubmit, useNavigation, Form } from '@remix-run/react'
+import type { LoaderFunctionArgs } from '@remix-run/node'
+import { useLoaderData, Form } from '@remix-run/react'
 import { useEffect, useState } from 'react'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
-import { PlayIcon, PauseIcon, CheckIcon, TrashIcon, PlusIcon } from 'lucide-react'
+import { PlayIcon, PauseIcon, TrashIcon, PlusIcon } from 'lucide-react'
 import { formatTime } from '~/lib/utils'
-
-type Task = {
-  id: number
-  title: string
-  duration: number
-  remainingTime: number
-  status: 'idle' | 'running' | 'paused' | 'completed'
-}
-
-// サーバーサイドでタスクを保存する（実際のアプリケーションではデータベースを使用します）
-let tasks: Task[] = []
+import type { Timebox } from '@prisma/client'
+import axios from 'axios'
+import { useForm, type SubmitHandler } from 'react-hook-form'
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  return json({ tasks })
+  const response: { data: TimeboxIndex[] } = await axios.get('http://localhost:5173/api/timeboxes')
+  return json({ initialTimeboxes: response.data })
 }
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const formData = await request.formData()
-  const action = formData.get('_action')
+type TimeboxIndex = Timebox & {
+  duration_seconds: number
+}
 
-  switch (action) {
-    case 'add': {
-      const title = formData.get('title') as string
-      const duration = Number.parseInt(formData.get('duration') as string)
-      const newTask: Task = { id: Date.now(), title, duration: duration * 60, remainingTime: duration * 60, status: 'idle' }
-      tasks.push(newTask)
-      break
-    }
-    case 'update': {
-      const id = Number.parseInt(formData.get('id') as string)
-      const status = formData.get('status') as Task['status']
-      tasks = tasks.map((task) => (task.id === id ? { ...task, status } : task))
-      break
-    }
-    case 'delete': {
-      const id = Number.parseInt(formData.get('id') as string)
-      tasks = tasks.filter((task) => task.id !== id)
-      break
-    }
-  }
-
-  return json({ success: true })
+type TimeboxForm = {
+  title: string
+  duration_minutes: number
 }
 
 const IndexPage: React.FC = () => {
-  const { tasks } = useLoaderData<typeof loader>()
-  const submit = useSubmit()
-  const navigation = useNavigation()
-  const [clientTasks, setClientTasks] = useState(tasks)
-
-  useEffect(() => {
-    setClientTasks(tasks)
-  }, [tasks])
+  const { initialTimeboxes } = useLoaderData<typeof loader>()
+  const [timeboxes, setTimeboxes] = useState(initialTimeboxes)
+  const { register, handleSubmit } = useForm<TimeboxForm>()
+  const onSubmit: SubmitHandler<TimeboxForm> = (data) => {
+    const formattedData = {
+      ...data,
+      duration_minutes: Number(data.duration_minutes),
+    }
+    createTimebox(formattedData)
+  }
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setClientTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task.status === 'running' && task.remainingTime > 0
-            ? { ...task, remainingTime: task.remainingTime - 1 }
-            : task.status === 'running' && task.remainingTime <= 0
-              ? { ...task, status: 'completed' }
-              : task,
+      setTimeboxes((prevTimeboxes) =>
+        prevTimeboxes.map((timebox) =>
+          timebox.status === 'running' && timebox.remaining_seconds > 0
+            ? { ...timebox, remaining_seconds: timebox.remaining_seconds - 1 }
+            : timebox.status === 'running' && timebox.remaining_seconds <= 0
+              ? { ...timebox, status: 'completed' }
+              : timebox,
         ),
       )
     }, 1000)
@@ -77,45 +53,78 @@ const IndexPage: React.FC = () => {
     return () => clearInterval(timer)
   }, [])
 
+  const createTimebox = async (data: TimeboxForm) => {
+    const response = await axios.post('http://localhost:5173/api/timeboxes', data)
+    if (response.status === 200) setTimeboxes((prevTimeboxes) => [...prevTimeboxes, response.data])
+    if (response.status !== 200) alert('追加に失敗しました')
+  }
+
+  const updateTimebox = async (id: string, data: { remaining_seconds: number }) => {
+    const response = await axios.put('http://localhost:5173/api/timeboxes', { id, ...data })
+    if (response.status !== 200) alert('更新に失敗しました')
+  }
+
+  const deleteTimebox = async (id: string) => {
+    const response = await axios.delete('http://localhost:5173/api/timeboxes', { data: { id } })
+    if (response.status === 200) setTimeboxes((prevTimeboxes) => prevTimeboxes.filter((timebox) => timebox.id !== id))
+    if (response.status !== 200) alert('削除に失敗しました')
+  }
+
   return (
     <div className="container mx-auto p-4 max-w-2xl">
-      <h1 className="text-2xl font-bold mb-4">タイムボックス TODO</h1>
-      <Form method="post" className="flex gap-2 mb-4">
-        <Input type="text" name="title" placeholder="タスク名" required />
-        <Input type="number" name="duration" placeholder="時間（分）" required />
-        <Button type="submit" name="_action" value="add">
-          <PlusIcon className="mr-2 h-4 w-4" /> 追加
+      <h1 className="text-2xl font-bold mb-4">タイムボックス</h1>
+      <Form onSubmit={handleSubmit(onSubmit)} className="flex gap-2 mb-4">
+        <Input type="text" placeholder="タイムボックス名" required {...register('title')} />
+        <Input type="number" placeholder="時間（分）" required {...register('duration_minutes')} />
+        <Button type="submit">
+          <PlusIcon className="mr-2 h-4 w-4" />
+          追加
         </Button>
       </Form>
       <div className="space-y-4">
-        {clientTasks.map((task) => (
-          <Card key={task.id}>
+        {timeboxes.map((timebox) => (
+          <Card key={timebox.id}>
             <CardHeader>
-              <CardTitle>{task.title}</CardTitle>
+              <CardTitle>{timebox.title}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex justify-between items-center">
                 <div>
-                  残り時間: {formatTime(task.remainingTime)} / {formatTime(task.duration)}
+                  残り時間: {formatTime(timebox.remaining_seconds)} / {formatTime(timebox.duration_seconds)}
                 </div>
                 <div className="space-x-2">
-                  {task.status !== 'completed' && (
+                  {timebox.status !== 'completed' && (
                     <>
-                      {task.status !== 'running' ? (
-                        <Button size="sm" onClick={() => submit({ _action: 'update', id: task.id, status: 'running' }, { method: 'post' })}>
+                      {timebox.status !== 'running' ? (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setTimeboxes((prevTimeboxes) =>
+                              prevTimeboxes.map((prevTimebox) => (prevTimebox.id === timebox.id ? { ...prevTimebox, status: 'running' } : prevTimebox)),
+                            )
+                          }}
+                        >
                           <PlayIcon className="h-4 w-4" />
                         </Button>
                       ) : (
-                        <Button size="sm" onClick={() => submit({ _action: 'update', id: task.id, status: 'paused' }, { method: 'post' })}>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setTimeboxes((prevTimeboxes) =>
+                              prevTimeboxes.map((prevTimebox) => (prevTimebox.id === timebox.id ? { ...prevTimebox, status: 'idle' } : prevTimebox)),
+                            )
+                            updateTimebox(timebox.id, { remaining_seconds: timebox.remaining_seconds })
+                          }}
+                        >
                           <PauseIcon className="h-4 w-4" />
                         </Button>
                       )}
-                      <Button size="sm" onClick={() => submit({ _action: 'update', id: task.id, status: 'completed' }, { method: 'post' })}>
+                      {/* <Button size="sm">
                         <CheckIcon className="h-4 w-4" />
-                      </Button>
+                      </Button> */}
                     </>
                   )}
-                  <Button size="sm" variant="destructive" onClick={() => submit({ _action: 'delete', id: task.id }, { method: 'post' })}>
+                  <Button size="sm" variant="destructive" onClick={() => deleteTimebox(timebox.id)}>
                     <TrashIcon className="h-4 w-4" />
                   </Button>
                 </div>
