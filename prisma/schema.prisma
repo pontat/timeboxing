@@ -14,21 +14,22 @@ datasource db {
 }
 
 model Timebox {
-  id             String   @id @default(uuid()) @db.Uuid
-  title          String   @db.VarChar(255)
-  comment        String?  @db.Text
-  start_time     DateTime
-  end_time       DateTime
-  remaining_time Int
-  status         Status   @default(idle)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id                String        @id @default(uuid()) @db.Uuid
+  title             String        @db.VarChar(255)
+  comment           String?       @db.Text
+  start_date_time   DateTime
+  end_date_time     DateTime
+  remaining_seconds Int
+  status            TimeboxStatus @default(idle)
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
 
   @@map("timeboxes") // テーブル名を指定
 }
 
-enum Status {
+enum TimeboxStatus {
   idle
+  running
   paused
   completed
 }
