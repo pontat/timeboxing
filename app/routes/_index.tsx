@@ -10,9 +10,10 @@ import { formatTime } from '~/lib/utils'
 import type { Timebox } from '@prisma/client'
 import axios from 'axios'
 import { useForm, type SubmitHandler } from 'react-hook-form'
+import { API_URL } from '~/lib/utils'
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const response: { data: TimeboxIndex[] } = await axios.get('http://localhost:5173/api/timeboxes')
+  const response: { data: TimeboxIndex[] } = await axios.get(`${API_URL}/api/timeboxes`)
   return json({ initialTimeboxes: response.data })
 }
 
@@ -54,18 +55,18 @@ const IndexPage: React.FC = () => {
   }, [])
 
   const createTimebox = async (data: TimeboxForm) => {
-    const response = await axios.post('http://localhost:5173/api/timeboxes', data)
+    const response = await axios.post(`${API_URL}/api/timeboxes`, data)
     if (response.status === 200) setTimeboxes((prevTimeboxes) => [...prevTimeboxes, response.data])
     if (response.status !== 200) alert('追加に失敗しました')
   }
 
   const updateTimebox = async (id: string, data: { remaining_seconds: number }) => {
-    const response = await axios.put('http://localhost:5173/api/timeboxes', { id, ...data })
+    const response = await axios.put(`${API_URL}/api/timeboxes`, { id, ...data })
     if (response.status !== 200) alert('更新に失敗しました')
   }
 
   const deleteTimebox = async (id: string) => {
-    const response = await axios.delete('http://localhost:5173/api/timeboxes', { data: { id } })
+    const response = await axios.delete(`${API_URL}/api/timeboxes`, { data: { id } })
     if (response.status === 200) setTimeboxes((prevTimeboxes) => prevTimeboxes.filter((timebox) => timebox.id !== id))
     if (response.status !== 200) alert('削除に失敗しました')
   }
